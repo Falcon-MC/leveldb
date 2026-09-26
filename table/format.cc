@@ -5,6 +5,7 @@
 #include "table/format.h"
 #include "table/compression/compressor_factory.h"
 
+#include "leveldb/decompress_allocator.h"
 #include "leveldb/env.h"
 #include "port/port.h"
 #include "table/block.h"
@@ -118,10 +119,14 @@ Status ReadBlock(RandomAccessFile* file, const ReadOptions& options,
       return Status::Corruption("unknown block compression type");
     }
 
-    std::string buffer;
+    DecompressAllocator* allocator = options.decompress_allocator;
+    std::string buffer = allocator != nullptr ? allocator->get() : std::string();
 
     if (!compressor->decompress(data, n, buffer)) {
       delete[] buf;
+      if (allocator != nullptr) {
+        allocator->release(std::move(buffer));
+      }
       return Status::Corruption("corrupted compressed block contents");
     }
 
@@ -129,6 +134,9 @@ Status ReadBlock(RandomAccessFile* file, const ReadOptions& options,
     auto ubuf = new char[buffer.size()];
     memcpy(ubuf, buffer.data(), buffer.size());
     result->data = Slice(ubuf, buffer.size());
+    if (allocator != nullptr) {
+      allocator->release(std::move(buffer));
+    }
     result->heap_allocated = true;
     result->cachable = true;
   }

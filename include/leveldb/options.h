@@ -13,6 +13,7 @@ namespace leveldb {
 
 class Cache;
 class Comparator;
+class DecompressAllocator;
 class Env;
 class FilterPolicy;
 class Logger;
@@ -163,6 +164,10 @@ struct LEVELDB_EXPORT ReadOptions {
   // not have been released).  If "snapshot" is null, use an implicit
   // snapshot of the state at the beginning of this read operation.
   const Snapshot* snapshot = nullptr;
+
+  // If non-null, decompression buffers are taken from and returned to this
+  // allocator instead of being allocated for every block read.
+  DecompressAllocator* decompress_allocator = nullptr;
 };
 
 // Options that control write operations
